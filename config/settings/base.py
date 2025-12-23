@@ -1,6 +1,7 @@
 import os
 from pathlib import Path
 import environ
+from datetime import timedelta
 
 # 1. Setup Path (Points to the root of your project)
 ROOT_DIR = Path(__file__).resolve(strict=True).parent.parent.parent
@@ -117,3 +118,12 @@ AUTH_USER_MODEL = "users.User"
 
 # CORS SETTINGS
 CORS_ALLOW_ALL_ORIGINS = True
+
+
+SIMPLE_JWT = {
+    "ACCESS_TOKEN_LIFETIME": timedelta(days=1),
+    "REFRESH_TOKEN_LIFETIME": timedelta(days=7),
+    "ROTATE_REFRESH_TOKENS": False,
+    "BLACKLIST_AFTER_ROTATION": False,
+    "AUTH_HEADER_TYPES": ("Bearer",),
+}
