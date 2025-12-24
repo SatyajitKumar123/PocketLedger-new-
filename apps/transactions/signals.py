@@ -5,18 +5,21 @@ from .models import Transaction, TransactionCategory
 
 User = get_user_model()
 
+# ✅ CORRECT: Runs only when SAVING (Creating)
 @receiver(post_save, sender=Transaction)
 def update_wallet_balance_on_add(sender, instance, created, **kwargs):
     """When a transaction is created, update the wallet balance."""
     if created:
         wallet = instance.wallet
+        # Convert Decimal to avoid float errors if needed, usually Django handles it
         if instance.type == "INCOME":
             wallet.balance += instance.amount
         else:
             wallet.balance -= instance.amount
         wallet.save()
 
-@receiver(post_save, sender=Transaction)
+# ✅ FIXED: Runs only when DELETING (was accidentally post_save)
+@receiver(post_delete, sender=Transaction)
 def update_wallet_balance_on_delete(sender, instance, **kwargs):
     """When a transaction is deleted, revert the wallet balance."""
     wallet = instance.wallet
@@ -26,10 +29,9 @@ def update_wallet_balance_on_delete(sender, instance, **kwargs):
         wallet.balance += instance.amount
     wallet.save()
 
-# --- NEW: Default Categories Logic ---
+# --- Default Categories Logic ---
 @receiver(post_save, sender=User)
 def create_default_categories(sender, instance, created, **kwargs):
-    """Create default categories for every new user."""
     if created:
         defaults = [
             "Food", "Rent", "Salary", "Shopping", 
@@ -39,5 +41,5 @@ def create_default_categories(sender, instance, created, **kwargs):
             TransactionCategory.objects.create(
                 user=instance, 
                 name=name, 
-                icon="default" # You can map icons later if you want
+                icon="default"
             )

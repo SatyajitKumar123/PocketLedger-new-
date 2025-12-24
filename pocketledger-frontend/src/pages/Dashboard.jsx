@@ -1,13 +1,18 @@
 import { useEffect, useState } from "react";
 import api from "../api/axios";
-import { Wallet, LogOut, TrendingUp, TrendingDown, Calendar, Plus } from "lucide-react";
+import { Wallet, LogOut, TrendingUp, TrendingDown, Calendar, Plus, Pencil, RotateCcw } from "lucide-react"; 
 import { useNavigate } from "react-router-dom";
 import TransactionModal from "../components/TransactionModal";
+import EditWalletModal from "../components/EditWalletModal"; 
 
 export default function Dashboard() {
   const [wallets, setWallets] = useState([]);
   const [transactions, setTransactions] = useState([]);
-  const [isModalOpen, setIsModalOpen] = useState(false);
+  
+  // State for Modals
+  const [isTransModalOpen, setIsTransModalOpen] = useState(false);
+  const [editingWallet, setEditingWallet] = useState(null); 
+  
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -36,6 +41,27 @@ export default function Dashboard() {
     navigate("/");
   };
 
+  // --- NEW: Reset Function ---
+  const handleReset = async () => {
+    // 1. Ask for confirmation
+    const confirmed = window.confirm(
+        "WARNING: This will delete ALL your transactions and reset all wallet balances to 0. \n\nAre you sure you want to start fresh?"
+    );
+
+    if (confirmed) {
+      try {
+        // 2. Call the API
+        await api.post("transactions/reset/");
+        // 3. Refresh data to show empty state
+        fetchData(); 
+        alert("Account reset successfully.");
+      } catch (error) {
+        console.error(error);
+        alert("Failed to reset account.");
+      }
+    }
+  };
+
   return (
     <div className="min-h-screen bg-gray-50 p-8">
       <div className="max-w-6xl mx-auto space-y-8">
@@ -49,7 +75,7 @@ export default function Dashboard() {
           
           <div className="flex gap-4">
             <button 
-                onClick={() => setIsModalOpen(true)}
+                onClick={() => setIsTransModalOpen(true)}
                 className="flex items-center gap-2 px-4 py-2 text-sm font-bold text-white bg-blue-600 rounded-lg hover:bg-blue-700 transition-colors shadow-sm"
             >
                 <Plus size={18} /> Add Transaction
@@ -69,22 +95,31 @@ export default function Dashboard() {
             <h2 className="text-xl font-bold text-gray-800 mb-4">Your Wallets</h2>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {wallets.map((wallet) => (
-                <div key={wallet.id} className="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
-                <div className="flex items-center gap-3 mb-4">
-                    <div className="p-3 bg-blue-50 rounded-full text-blue-600">
-                    <Wallet size={24} />
+                <div key={wallet.id} className="bg-white p-6 rounded-xl shadow-sm border border-gray-100 relative group">
+                    {/* Edit Button (Top Right) */}
+                    <button 
+                        onClick={() => setEditingWallet(wallet)}
+                        className="absolute top-4 right-4 p-2 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-full transition-all"
+                        title="Edit Balance"
+                    >
+                        <Pencil size={16} />
+                    </button>
+
+                    <div className="flex items-center gap-3 mb-4">
+                        <div className="p-3 bg-blue-50 rounded-full text-blue-600">
+                        <Wallet size={24} />
+                        </div>
+                        <div>
+                        <h3 className="font-semibold text-gray-900">{wallet.name}</h3>
+                        <p className="text-xs text-gray-500 uppercase font-bold">{wallet.type}</p>
+                        </div>
                     </div>
                     <div>
-                    <h3 className="font-semibold text-gray-900">{wallet.name}</h3>
-                    <p className="text-xs text-gray-500 uppercase font-bold">{wallet.type}</p>
+                        <p className="text-sm text-gray-500">Available Balance</p>
+                        <p className="text-3xl font-bold text-gray-900">
+                            {wallet.currency} {wallet.balance}
+                        </p>
                     </div>
-                </div>
-                <div>
-                    <p className="text-sm text-gray-500">Available Balance</p>
-                    <p className="text-3xl font-bold text-gray-900">
-                        {wallet.currency} {wallet.balance}
-                    </p>
-                </div>
                 </div>
             ))}
             </div>
@@ -140,12 +175,30 @@ export default function Dashboard() {
                 )}
             </div>
         </div>
+
+        {/* --- NEW: Danger Zone Section --- */}
+        <div className="pt-8 border-t border-gray-200 mt-8">
+            <h3 className="text-xs font-bold text-gray-400 uppercase mb-4 tracking-wider">Danger Zone</h3>
+            <button 
+                onClick={handleReset}
+                className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-red-600 border border-red-200 bg-red-50 rounded-lg hover:bg-red-100 hover:border-red-300 transition-colors"
+            >
+                <RotateCcw size={16} /> Reset All Data
+            </button>
+        </div>
         
-        {/* The Modal Component */}
+        {/* Modals */}
         <TransactionModal 
-            isOpen={isModalOpen}
-            onClose={() => setIsModalOpen(false)}
+            isOpen={isTransModalOpen}
+            onClose={() => setIsTransModalOpen(false)}
             wallets={wallets}
+            onSuccess={fetchData}
+        />
+
+        <EditWalletModal 
+            isOpen={!!editingWallet} 
+            onClose={() => setEditingWallet(null)}
+            wallet={editingWallet}
             onSuccess={fetchData}
         />
 
